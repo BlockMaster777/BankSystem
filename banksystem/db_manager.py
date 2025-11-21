@@ -1,15 +1,15 @@
 import sqlite3
+
 import config
 
 
-class TokenAlreadyExistsException(Exception):
-    pass
+class TokenAlreadyExistsException(Exception): pass
 
-class UserAlreadyExistsException(Exception):
-    pass
 
-class UserDontExistException(Exception):
-    pass
+class UserAlreadyExistsException(Exception): pass
+
+
+class UserDontExistException(Exception): pass
 
 
 class DBManager:
@@ -21,13 +21,13 @@ class DBManager:
             cur = conn.cursor()
             cur.execute(sql, data)
             conn.commit()
-    
+
     def __select_one(self, sql, *data):
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             cur.execute(sql, data)
             return cur.fetchone()
-    
+
     def __select_all(self, sql, *data):
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
@@ -55,10 +55,10 @@ class DBManager:
         if self.__check_if_exists("SELECT id FROM users WHERE username = ?", username):
             raise UserAlreadyExistsException
         self.__execute("INSERT INTO users(username, password) VALUES (?, ?)", username, password_hash)
-    
+
     def get_id(self, username):
         return self.__select_one("SELECT id FROM users WHERE username = ?", username)[0]
-    
+
     def get_username(self, user_id):
         return self.__select_one("SELECT username FROM users WHERE id = ?", user_id)[0]
 
@@ -67,11 +67,11 @@ class DBManager:
 
     def check_username_exists(self, username):
         return self.__check_if_exists("SELECT username FROM users WHERE username = ?",
-                                 username)
+                                      username)
 
     def check_password(self, user_id, password_hash):
         return self.__check_if_exists("SELECT id FROM users WHERE id = ? AND password = ?",
-                                 user_id, password_hash)
+                                      user_id, password_hash)
 
     def set_username(self, user_id, new_username):
         if self.__check_if_exists("SELECT id FROM users WHERE username = ?", new_username):
@@ -89,7 +89,7 @@ class DBManager:
     def create_token(self, token, expire_time):
         if self.__check_if_exists("SELECT token FROM tokens WHERE token = ?", token):
             raise TokenAlreadyExistsException
-        self.__execute("INSERT INTO tokens VALUES (?, ?)",token, expire_time)
+        self.__execute("INSERT INTO tokens VALUES (?, ?)", token, expire_time)
 
     def check_token_exists(self, token):
         return self.__check_if_exists("SELECT token FROM tokens WHERE token = ?", token)
