@@ -90,6 +90,15 @@ class InteractionService:
         else:
             raise InvalidTokenException()
 
+    def get_balance(self, user_id: int, token: str) -> int:
+        if self._auth.verify_token(user_id, token):
+            return self._db.get_balance(user_id)
+        else:
+            raise InvalidTokenException()
+
+    def get_uid(self, username: str) -> int:
+        return self._db.get_id(username)
+
 
 if __name__ == '__main__':
     usn1 = "block"
