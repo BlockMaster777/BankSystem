@@ -86,3 +86,12 @@ class Handler(BaseHTTPRequestHandler):
     @staticmethod
     def _get_qs_param(params, name):
         return params.get(name, [None])[0]
+
+
+def run(host=config.HOST, port=config.PORT):
+    srv = HTTPServer((host, port), Handler)
+    print(f"Listening on http://{host}:{port}")
+    srv.serve_forever()
+
+if __name__ == '__main__':
+    run()
