@@ -57,6 +57,11 @@ def test_check_username(temp_conn, temp_manager):
     assert (temp_manager.check_username_exists("test") == True and
             temp_manager.check_username_exists("dont exist") == False)
 
+def test_check_id(temp_conn, temp_manager):
+    temp_manager.add_user("test", "hash")
+    assert (temp_manager.check_id_exists(1) == True and
+            temp_manager.check_id_exists(84) == False)
+
 def test_check_password(temp_conn, temp_manager):
     temp_manager.add_user("test", "hash")
     assert (temp_manager.check_password(1, "hash") == True and
@@ -102,12 +107,12 @@ def test_creating_existing_token(temp_conn, temp_manager):
 
 def test_check_token(temp_conn, temp_manager):
     temp_manager.create_token("test", 5)
-    assert (temp_manager.check_token_exists("test") == True and
-            temp_manager.check_token_exists("dont exist") == False)
+    assert (temp_manager.check_token_exists("test", 1) == True and
+            temp_manager.check_token_exists("dont exist", 1) == False)
 
 def test_delete_expired_tokens(temp_conn, temp_manager):
     temp_manager.create_token("test", 5)
     temp_manager.create_token("test2", 8)
     temp_manager.delete_expired_tokens(7)
-    assert (temp_manager.check_token_exists("test2") == True and
-            temp_manager.check_token_exists("test") == False)
+    assert (temp_manager.check_token_exists("test2", 1) == True and
+            temp_manager.check_token_exists("test", 1) == False)

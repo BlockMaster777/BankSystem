@@ -5,14 +5,19 @@ import time
 import config
 import banksystem.db_manager as db_manager
 from banksystem.db_manager import UserAlreadyExistsException
+from banksystem.db_manager import UserDontExistException
 
 
 class WrongPasswordException(Exception): pass
+class InvalidTokenException(Exception): pass
+class NotEnoughFundsException(Exception): pass
+
+db_man = db_manager.DBManager()
 
 
 class AuthService:
-    def __init__(self, db_path: str = config.DB_PATH, token_ttl: int = 60) -> None:
-        self._db = db_manager.DBManager(db_path)
+    def __init__(self, db: db_manager.DBManager, token_ttl: int = config.TOKEN_TTL) -> None:
+        self._db = db
         self._token_ttl = int(token_ttl)
 
     @staticmethod
@@ -31,10 +36,16 @@ class AuthService:
         if not self.check_password(user_id, password):
             raise WrongPasswordException()
         token = self._gen_token(user_id)
-        while self._db.check_token_exists(token):
+        self._db.delete_expired_tokens(time.time())
+        while self._db.check_token_exists(token, time.time()):
             token = self._gen_token(user_id)
         self._db.create_token(token, time.time() + self._token_ttl)
         return token
+
+    def get_id(self, username: str) ->  int:
+        if self._db.check_username_exists(username):
+            return self._db.get_id(username)
+        raise UserDontExistException
 
     def register_user_and_get_id(self, username: str, password: str) -> int:
         if self._db.check_username_exists(username):
@@ -42,14 +53,53 @@ class AuthService:
         self._db.add_user(username, self._hash_password(password))
         return self._db.get_id(username)
 
+    def verify_token(self, user_id: int, token: str) -> bool:
+        token_data = base64.urlsafe_b64decode(token.encode()).decode().split(":")
+        print(token_data)
+        if len(token_data) != 0:
+            if token_data[0].isnumeric():
+                self._db.delete_expired_tokens(time.time())
+                if self._db.check_token_exists(token, time.time()):
+                    if int(token_data[0]) == user_id:
+                        return True
+        return False
+
+
+class InteractionService:
+    def __init__(self, db: db_manager.DBManager, auth_service: AuthService) -> None:
+        self._db = db
+        self._auth = auth_service
+
+    def edit_username(self, user_id: int, new_username: str, token: str) -> None:
+        if self._auth.verify_token(user_id, token):
+            self._db.set_username(user_id, new_username)
+        else:
+            raise InvalidTokenException
+
+    def send_money(self, user_id: int, amount: int, to_id: int, token: str):
+        if self._auth.verify_token(user_id, token):
+            if (balance := self._db.get_balance(user_id)) > amount:
+                if self._db.check_id_exists(to_id):
+                    receiver_balance = self._db.get_balance(to_id)
+                    self._db.set_balance(user_id, balance - amount)
+                    self._db.set_balance(to_id, receiver_balance + amount)
+                else:
+                    raise UserDontExistException()
+            else:
+                raise NotEnoughFundsException()
+        else:
+            raise InvalidTokenException()
+
 
 if __name__ == '__main__':
-    name = "block"
-    psw = "123"
+    usn1 = "block"
+    usn2 = "roma"
+    psw1 = "123"
+    psw2 = "111"
 
-    auth = AuthService()
-    my_id = auth.register_user_and_get_id(name, psw)
-    my_token = auth.get_token(my_id, psw)
-
-    print(my_id)
+    auth = AuthService(db_man)
+    my_token = auth.get_token(1, psw1)
     print(my_token)
+    print(auth.verify_token(1, my_token))
+    inter = InteractionService(db_man, auth)
+    inter.send_money(1, 100, 2, my_token)

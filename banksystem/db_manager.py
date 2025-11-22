@@ -14,7 +14,7 @@ class UserDontExistException(Exception): pass
 
 
 class DBManager:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str = config.DB_PATH):
         self.db_path = db_path
 
     def _get_conn(self) -> sqlite3.Connection:
@@ -85,10 +85,13 @@ class DBManager:
         row = self._select_one("SELECT balance FROM users WHERE id = ?", user_id)
         if not row:
             raise UserDontExistException()
-        return int(row["balance"])
+        return int(dict(row)["balance"])
 
     def check_username_exists(self, username: str) -> bool:
         return self._exists("SELECT username FROM users WHERE username = ?", username)
+
+    def check_id_exists(self, user_id: int) -> bool:
+        return self._exists("SELECT id FROM users WHERE id = ?", user_id)
 
     def check_password(self, user_id: int, password_hash: str) -> bool:
         return self._exists(
@@ -113,13 +116,13 @@ class DBManager:
             raise TokenAlreadyExistsException()
         self._execute("INSERT INTO tokens(token, expire_time) VALUES (?, ?)", token, expire_time)
 
-    def check_token_exists(self, token: str) -> bool:
-        return self._exists("SELECT token FROM tokens WHERE token = ?", token)
+    def check_token_exists(self, token: str, current_time: float) -> bool:
+        return self._exists("SELECT token FROM tokens WHERE token = ? AND expire_time > ?", token, current_time)
 
     def delete_expired_tokens(self, current_time: float) -> None:
         self._execute("DELETE FROM tokens WHERE expire_time <= ?", current_time)
 
 
 if __name__ == '__main__':
-    db_manager = DBManager(config.DB_PATH)
+    db_manager = DBManager()
     db_manager.create_tables()
