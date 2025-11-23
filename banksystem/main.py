@@ -38,7 +38,17 @@ class Handler(BaseHTTPRequestHandler):
             case "/transfer":
                 self._handle_transfer_funds(parsed_path)
             case "/register":
-                self._register_user(parsed_path)
+                self._handle_register_user(parsed_path)
+            case "/delete":
+                self._handle_delete_user(parsed_path)
+            case "/admin/set_balance":
+                self._handle_admin_set_balance(parsed_path)
+            case "/admin/balance":
+                self._handle_admin_get_balance(parsed_path)
+            case "/admin/delete_user":
+                self._handle_admin_delete_user(parsed_path)
+            case "/admin/clear_tokens":
+                self._handle_admin_clear_tokens(parsed_path)
             case _:
                 self._send_json({"error": "Not Found"}, status_code=404)
 
@@ -147,7 +157,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
 
-    def _register_user(self, parsed_path):
+    def _handle_register_user(self, parsed_path):
         query_params = parse_qs(parsed_path.query)
         username = self._get_qs_param(query_params, "username")
         password = self._get_qs_param(query_params, "password")
@@ -164,6 +174,150 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"uid": user_id})
         except UserAlreadyExistsException:
             self._send_json({"error": "User already exists"}, status_code=400)
+        except Exception as e:
+            self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
+
+    def _handle_delete_user(self, parsed_path):
+        query_params = parse_qs(parsed_path.query)
+        uid = self._get_qs_param(query_params, "uid")
+        token = self._get_qs_param(query_params, "token")
+
+        if uid is None:
+            self._send_json({"error": "Missing uid"}, status_code=400)
+            return
+        if token is None:
+            self._send_json({"error": "Missing token"}, status_code=400)
+            return
+
+        try:
+            uid_int = int(uid)
+        except ValueError:
+            self._send_json({"error": "Invalid uid"}, status_code=400)
+            return
+
+        try:
+            inter_service.delete_user(uid_int, token)
+            self._send_json({"status": "success"})
+        except InvalidTokenException, binascii.Error, UnicodeError:
+            self._send_json({"error": "Invalid token"}, status_code=403)
+        except UserDontExistException:
+            self._send_json({"error": "User does not exist"}, status_code=404)
+        except Exception as e:
+            self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
+
+    def _handle_admin_set_balance(self, parsed_path):
+        query_params = parse_qs(parsed_path.query)
+        uid = self._get_qs_param(query_params, "uid")
+        amount = self._get_qs_param(query_params, "amount")
+        token = self._get_qs_param(query_params, "token")
+        to_uid = self._get_qs_param(query_params, "to_uid")
+
+        if uid is None or token is None or to_uid is None or amount is None:
+            self._send_json({"error": "Missing parameters"}, status_code=400)
+            return
+
+        try:
+            uid_int = int(uid)
+            to_uid_int = int(to_uid)
+            amount_int = int(amount)
+        except ValueError:
+            self._send_json({"error": "Invalid parameters"}, status_code=400)
+            return
+
+        try:
+            inter_service.set_balance(uid_int, amount_int, to_uid_int, token)
+            self._send_json({"status": "success"})
+        except InvalidTokenException, binascii.Error, UnicodeError:
+            self._send_json({"error": "Invalid token"}, status_code=403)
+        except logic.NoAccessException:
+            self._send_json({"error": "No access"}, status_code=403)
+        except UserDontExistException:
+            self._send_json({"error": "User does not exist"}, status_code=404)
+        except Exception as e:
+            self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
+
+    def _handle_admin_get_balance(self, parsed_path):
+        query_params = parse_qs(parsed_path.query)
+        uid = self._get_qs_param(query_params, "uid")
+        of_uid = self._get_qs_param(query_params, "of_uid")
+        token = self._get_qs_param(query_params, "token")
+
+        if uid is None or token is None or of_uid is None:
+            self._send_json({"error": "Missing parameters"}, status_code=400)
+            return
+
+        try:
+            uid_int = int(uid)
+            of_uid_int = int(of_uid)
+        except ValueError:
+            self._send_json({"error": "Invalid parameters"}, status_code=400)
+            return
+
+        try:
+            balance = inter_service.admin_get_balance(uid_int, of_uid_int, token)
+            self._send_json({"balance": balance})
+        except InvalidTokenException, binascii.Error, UnicodeError:
+            self._send_json({"error": "Invalid token"}, status_code=403)
+        except logic.NoAccessException:
+            self._send_json({"error": "No access"}, status_code=403)
+        except UserDontExistException:
+            self._send_json({"error": "User does not exist"}, status_code=404)
+        except Exception as e:
+            self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
+
+    def _handle_admin_delete_user(self, parsed_path):
+        query_params = parse_qs(parsed_path.query)
+        uid = self._get_qs_param(query_params, "uid")
+        to_delete_uid = self._get_qs_param(query_params, "to_delete_uid")
+        token = self._get_qs_param(query_params, "token")
+
+        if uid is None or token is None or to_delete_uid is None:
+            self._send_json({"error": "Missing parameters"}, status_code=400)
+            return
+
+        try:
+            uid_int = int(uid)
+            to_delete_uid_int = int(to_delete_uid)
+        except ValueError:
+            self._send_json({"error": "Invalid parameters"}, status_code=400)
+            return
+
+        try:
+            inter_service.admin_delete_user(uid_int, to_delete_uid_int, token)
+            self._send_json({"status": "success"})
+        except InvalidTokenException, binascii.Error, UnicodeError:
+            self._send_json({"error": "Invalid token"}, status_code=403)
+        except logic.NoAccessException:
+            self._send_json({"error": "No access"}, status_code=403)
+        except UserDontExistException:
+            self._send_json({"error": "User does not exist"}, status_code=404)
+        except Exception as e:
+            self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
+
+    def _handle_admin_clear_tokens(self, parsed_path):
+        query_params = parse_qs(parsed_path.query)
+        uid = self._get_qs_param(query_params, "uid")
+        token = self._get_qs_param(query_params, "token")
+
+        if uid is None or token is None:
+            self._send_json({"error": "Missing parameters"}, status_code=400)
+            return
+
+        try:
+            uid_int = int(uid)
+        except ValueError:
+            self._send_json({"error": "Invalid uid"}, status_code=400)
+            return
+
+        try:
+            inter_service.clear_tokens(uid_int, token)
+            self._send_json({"status": "success"})
+        except InvalidTokenException, binascii.Error, UnicodeError:
+            self._send_json({"error": "Invalid token"}, status_code=403)
+        except logic.NoAccessException:
+            self._send_json({"error": "No access"}, status_code=403)
+        except UserDontExistException:
+            self._send_json({"error": "User does not exist"}, status_code=404)
         except Exception as e:
             self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
 

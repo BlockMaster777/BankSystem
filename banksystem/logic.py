@@ -70,6 +70,10 @@ class InteractionService:
         self._db = db
         self._auth = auth_service
 
+    @staticmethod
+    def _is_admin(user_id: int) -> bool:
+        return user_id in config.ADMIN_UIDS
+
     def edit_username(self, user_id: int, new_username: str, token: str) -> None:
         if self._auth.verify_token(user_id, token):
             self._db.set_username(user_id, new_username)
@@ -96,6 +100,14 @@ class InteractionService:
         else:
             raise InvalidTokenException()
 
+    def admin_get_balance(self, user_id: int, of_user_id: int, token: str) -> int:
+        if not self._is_admin(user_id):
+            raise NoAccessException()
+        if self._auth.verify_token(user_id, token):
+            return self._db.get_balance(of_user_id)
+        else:
+            raise InvalidTokenException()
+
     def get_uid(self, username: str) -> int:
         return self._db.get_id(username)
 
@@ -105,11 +117,19 @@ class InteractionService:
         else:
             raise InvalidTokenException()
 
-    def set_balance(self, user_id: int, amount: int, token: str) -> None:
-        if user_id != 1:
+    def admin_delete_user(self, user_id: int, to_delete_user_id: int, token: str) -> None:
+        if not self._is_admin(user_id):
             raise NoAccessException()
         if self._auth.verify_token(user_id, token):
-            self._db.set_balance(user_id, amount)
+            self._db.delete_user(to_delete_user_id)
+        else:
+            raise InvalidTokenException()
+
+    def set_balance(self, user_id: int, amount: int, to_uid: int, token: str) -> None:
+        if not self._is_admin(user_id):
+            raise NoAccessException()
+        if self._auth.verify_token(user_id, token):
+            self._db.set_balance(to_uid, amount)
         else:
             raise InvalidTokenException()
 
@@ -118,6 +138,14 @@ class InteractionService:
             return self._auth.register_user_and_get_id(username, password)
         except UserAlreadyExistsException:
             raise UserAlreadyExistsException()
+
+    def clear_tokens(self, user_id: int, token:  str) -> None:
+        if not self._is_admin(user_id):
+            raise NoAccessException()
+        if self._auth.verify_token(user_id, token):
+            self._db.delete_expired_tokens(9999999999999999)
+        else:
+            raise InvalidTokenException()
 
 
 if __name__ == '__main__':
