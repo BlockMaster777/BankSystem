@@ -37,6 +37,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._handle_get_token(parsed_path)
             case "/transfer":
                 self._handle_transfer_funds(parsed_path)
+            case "/register":
+                self._register_user(parsed_path)
             case _:
                 self._send_json({"error": "Not Found"}, status_code=404)
 
@@ -142,6 +144,26 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"error": "User does not exist"}, status_code=404)
         except NotEnoughFundsException:
             self._send_json({"error": "Not enough funds"}, status_code=400)
+        except Exception as e:
+            self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
+
+    def _register_user(self, parsed_path):
+        query_params = parse_qs(parsed_path.query)
+        username = self._get_qs_param(query_params, "username")
+        password = self._get_qs_param(query_params, "password")
+
+        if username is None:
+            self._send_json({"error": "Missing username"}, status_code=400)
+            return
+        if password is None:
+            self._send_json({"error": "Missing password"}, status_code=400)
+            return
+
+        try:
+            user_id = inter_service.register_user(username, password)
+            self._send_json({"uid": user_id})
+        except UserAlreadyExistsException:
+            self._send_json({"error": "User already exists"}, status_code=400)
         except Exception as e:
             self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
 

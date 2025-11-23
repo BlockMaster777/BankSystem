@@ -113,6 +113,12 @@ class InteractionService:
         else:
             raise InvalidTokenException()
 
+    def register_user(self, username: str, password: str) -> int:
+        try:
+            return self._auth.register_user_and_get_id(username, password)
+        except UserAlreadyExistsException:
+            raise UserAlreadyExistsException()
+
 
 if __name__ == '__main__':
     usn1 = "block"
