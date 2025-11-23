@@ -11,6 +11,7 @@ from banksystem.db_manager import UserDontExistException
 class WrongPasswordException(Exception): pass
 class InvalidTokenException(Exception): pass
 class NotEnoughFundsException(Exception): pass
+class NoAccessException(Exception): pass
 
 db_man = db_manager.DBManager()
 
@@ -55,7 +56,6 @@ class AuthService:
 
     def verify_token(self, user_id: int, token: str) -> bool:
         token_data = base64.urlsafe_b64decode(token.encode()).decode().split(":")
-        print(token_data)
         if len(token_data) != 0:
             if token_data[0].isnumeric():
                 self._db.delete_expired_tokens(time.time())
@@ -98,6 +98,20 @@ class InteractionService:
 
     def get_uid(self, username: str) -> int:
         return self._db.get_id(username)
+
+    def delete_user(self, user_id: int, token: str) -> None:
+        if self._auth.verify_token(user_id, token):
+            self._db.delete_user(user_id)
+        else:
+            raise InvalidTokenException()
+
+    def set_balance(self, user_id: int, amount: int, token: str) -> None:
+        if user_id != 1:
+            raise NoAccessException()
+        if self._auth.verify_token(user_id, token):
+            self._db.set_balance(user_id, amount)
+        else:
+            raise InvalidTokenException()
 
 
 if __name__ == '__main__':
