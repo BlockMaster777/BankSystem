@@ -20,8 +20,8 @@ import hashlib
 import dotenv
 import os
 import time
-import config
 import jwt
+import banksystem.config as config
 import banksystem.db_manager as db_manager
 from banksystem.db_manager import UserAlreadyExistsException
 from banksystem.db_manager import UserDontExistException

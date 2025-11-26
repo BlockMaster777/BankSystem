@@ -241,6 +241,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
+banksystem/config.py
 banksystem/database.db
 test_database.db
 /database.db
