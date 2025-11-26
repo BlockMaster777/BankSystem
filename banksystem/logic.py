@@ -2,7 +2,7 @@ import base64
 import hashlib
 import secrets
 import time
-import config
+import banksystem.config as config
 import banksystem.db_manager as db_manager
 from banksystem.db_manager import UserAlreadyExistsException
 from banksystem.db_manager import UserDontExistException

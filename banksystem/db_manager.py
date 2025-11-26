@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Any, Optional, List
 
-import config
+import banksystem.config as config
 
 
 class TokenAlreadyExistsException(Exception): pass
@@ -16,6 +16,7 @@ class UserDontExistException(Exception): pass
 class DBManager:
     def __init__(self, db_path: str = config.DB_PATH):
         self.db_path = db_path
+        self.create_tables()
 
     def _get_conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -121,8 +122,3 @@ class DBManager:
 
     def delete_expired_tokens(self, current_time: float) -> None:
         self._execute("DELETE FROM tokens WHERE expire_time <= ?", current_time)
-
-
-if __name__ == '__main__':
-    db_manager = DBManager()
-    db_manager.create_tables()
