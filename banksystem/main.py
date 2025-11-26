@@ -284,6 +284,35 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
 
+    def _handle_admin_delete_user(self, parsed_path):
+        query_params = parse_qs(parsed_path.query)
+        uid = self._get_qs_param(query_params, "uid")
+        to_delete_uid = self._get_qs_param(query_params, "to_delete_uid")
+        token = self._get_qs_param(query_params, "token")
+
+        if uid is None or token is None or to_delete_uid is None:
+            self._send_json({"error": "Missing parameters"}, status_code=400)
+            return
+
+        try:
+            uid_int = int(uid)
+            to_delete_uid_int = int(to_delete_uid)
+        except ValueError:
+            self._send_json({"error": "Invalid parameters"}, status_code=400)
+            return
+
+        try:
+            inter_service.admin_delete_user(uid_int, to_delete_uid_int, token)
+            self._send_json({"status": "success"})
+        except InvalidTokenException, binascii.Error, UnicodeError:
+            self._send_json({"error": "Invalid token"}, status_code=403)
+        except logic.NoAccessException:
+            self._send_json({"error": "No access"}, status_code=403)
+        except UserDontExistException:
+            self._send_json({"error": "User does not exist"}, status_code=404)
+        except Exception as e:
+            self._send_json({"error": f"Internal server error: {e}"}, status_code=500)
+
 
     @staticmethod
     def _get_qs_param(params, name):
