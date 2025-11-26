@@ -34,6 +34,7 @@ class UserDontExistException(Exception): pass
 class DBManager:
     def __init__(self, db_path: str = config.DB_PATH):
         self.db_path = db_path
+        self.create_tables()
 
     def _get_conn(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
