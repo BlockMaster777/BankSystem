@@ -1,8 +1,9 @@
-import base64
 import hashlib
-import secrets
+import dotenv
+import os
 import time
 import config
+import jwt
 import banksystem.db_manager as db_manager
 from banksystem.db_manager import UserAlreadyExistsException
 from banksystem.db_manager import UserDontExistException
@@ -14,7 +15,7 @@ class NotEnoughFundsException(Exception): pass
 class NoAccessException(Exception): pass
 
 db_man = db_manager.DBManager()
-
+dotenv.load_dotenv()
 
 class AuthService:
     def __init__(self, db: db_manager.DBManager, token_ttl: int = config.TOKEN_TTL) -> None:
@@ -28,20 +29,20 @@ class AuthService:
     def check_password(self, user_id: int, password: str) -> bool:
         return self._db.check_password(user_id, self._hash_password(password))
 
+
     @staticmethod
     def _gen_token(user_id: int) -> str:
-        raw = f"{user_id}:{secrets.token_urlsafe(32)}"
-        return base64.urlsafe_b64encode(raw.encode()).decode()
+        payload = {
+            "user_id": user_id,
+            "exp": time.time() + config.TOKEN_TTL,
+            "iss": "bank_system",
+        }
+        return jwt.encode(payload, os.getenv("SECRET_KEY"), algorithm="HS256")
 
     def get_token(self, user_id: int, password: str) -> str:
         if not self.check_password(user_id, password):
             raise WrongPasswordException()
-        token = self._gen_token(user_id)
-        self._db.delete_expired_tokens(time.time())
-        while self._db.check_token_exists(token, time.time()):
-            token = self._gen_token(user_id)
-        self._db.create_token(token, time.time() + self._token_ttl)
-        return token
+        return self._gen_token(user_id)
 
     def get_id(self, username: str) ->  int:
         if self._db.check_username_exists(username):
@@ -54,15 +55,15 @@ class AuthService:
         self._db.add_user(username, self._hash_password(password))
         return self._db.get_id(username)
 
-    def verify_token(self, user_id: int, token: str) -> bool:
-        token_data = base64.urlsafe_b64decode(token.encode()).decode().split(":")
-        if len(token_data) != 0:
-            if token_data[0].isnumeric():
-                self._db.delete_expired_tokens(time.time())
-                if self._db.check_token_exists(token, time.time()):
-                    if int(token_data[0]) == user_id:
-                        return True
-        return False
+    @staticmethod
+    def verify_token(user_id: int, token: str) -> bool:
+        try:
+            decoded = jwt.decode(token, os.environ.get("SECRET_KEY"), algorithms=["HS256"])
+        except jwt.ExpiredSignatureError, jwt.InvalidTokenError:
+            raise InvalidTokenException()
+        if decoded.get("user_id") != user_id:
+            return False
+        return True
 
 
 class InteractionService:
@@ -138,14 +139,6 @@ class InteractionService:
             return self._auth.register_user_and_get_id(username, password)
         except UserAlreadyExistsException:
             raise UserAlreadyExistsException()
-
-    def clear_tokens(self, user_id: int, token:  str) -> None:
-        if not self._is_admin(user_id):
-            raise NoAccessException()
-        if self._auth.verify_token(user_id, token):
-            self._db.delete_expired_tokens(9999999999999999)
-        else:
-            raise InvalidTokenException()
 
 
 if __name__ == '__main__':

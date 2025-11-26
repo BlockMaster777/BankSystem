@@ -94,25 +94,3 @@ def test_deleting_non_existing_user(temp_conn, temp_manager):
     temp_manager.add_user("test", "hash")
     with pytest.raises(banksystem.db_manager.UserDontExistException):
         temp_manager.delete_user(84)
-
-def test_create_token(temp_conn, temp_cursor, temp_manager):
-    temp_manager.create_token("test", 5)
-    temp_cursor.execute("SELECT token, expire_time FROM tokens WHERE token = 'test' AND expire_time = 5")
-    assert temp_cursor.fetchall() == [("test", 5)]
-
-def test_creating_existing_token(temp_conn, temp_manager):
-    temp_manager.create_token("test", 5)
-    with pytest.raises(banksystem.db_manager.TokenAlreadyExistsException):
-        temp_manager.create_token("test", 8)
-
-def test_check_token(temp_conn, temp_manager):
-    temp_manager.create_token("test", 5)
-    assert (temp_manager.check_token_exists("test", 1) == True and
-            temp_manager.check_token_exists("dont exist", 1) == False)
-
-def test_delete_expired_tokens(temp_conn, temp_manager):
-    temp_manager.create_token("test", 5)
-    temp_manager.create_token("test2", 8)
-    temp_manager.delete_expired_tokens(7)
-    assert (temp_manager.check_token_exists("test2", 1) == True and
-            temp_manager.check_token_exists("test", 1) == False)

@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Any, Optional, List
 
-import config
+import banksystem.config as config
 
 
 class TokenAlreadyExistsException(Exception): pass
@@ -110,17 +110,6 @@ class DBManager:
         if not self._exists("SELECT id FROM users WHERE id = ?", user_id):
             raise UserDontExistException()
         self._execute("DELETE FROM users WHERE id = ?", user_id)
-
-    def create_token(self, token: str, expire_time: float) -> None:
-        if self._exists("SELECT token FROM tokens WHERE token = ?", token):
-            raise TokenAlreadyExistsException()
-        self._execute("INSERT INTO tokens(token, expire_time) VALUES (?, ?)", token, expire_time)
-
-    def check_token_exists(self, token: str, current_time: float) -> bool:
-        return self._exists("SELECT token FROM tokens WHERE token = ? AND expire_time > ?", token, current_time)
-
-    def delete_expired_tokens(self, current_time: float) -> None:
-        self._execute("DELETE FROM tokens WHERE expire_time <= ?", current_time)
 
 
 if __name__ == '__main__':

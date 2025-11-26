@@ -244,3 +244,4 @@ cython_debug/
 config.py
 banksystem/database.db
 test_database.db
+/database.db
