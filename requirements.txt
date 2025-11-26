@@ -1,5 +1,5 @@
+python-dotenv
 pydantic
 fastapi
 pytest
 pyjwt
-dotenv

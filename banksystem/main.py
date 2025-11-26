@@ -16,7 +16,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import binascii
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -82,7 +81,7 @@ def balance(user_id: int, token: str):
     try:
         balance = inter_service.get_balance(user_id, token)
         return {"balance": balance}
-    except InvalidTokenException, binascii.Error, UnicodeError:
+    except InvalidTokenException:
         raise HTTPException(status_code=400, detail="Invalid token")
     except UserDontExistException:
         raise HTTPException(status_code=404, detail="User dont exist")
